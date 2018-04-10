@@ -1,6 +1,9 @@
 #include "core.h"
 #include <QDebug>
 #include <QJsonDocument>
+#include <QTimer>
+#include <QJsonArray>
+#include <QJsonObject>
 
 Core::Core(QObject *parent) : QObject(parent)
 {
@@ -13,6 +16,38 @@ Core::Core(QObject *parent) : QObject(parent)
 	connect(m_ipc,SIGNAL(si_jsonPacketReceived(QString,QJsonObject)),this,SLOT(jsonPacketReceived(QString,QJsonObject)));
 	connect(m_ipc,SIGNAL(si_subscribeMessage(QString)),this,SLOT(subscribeMessage(QString)));
 	connect(m_ipc,SIGNAL(si_publishMessage(QString,QByteArray)),this,SLOT(publishMessage(QString,QByteArray)));
+	QTimer *timer = new QTimer(this);
+	connect(timer,SIGNAL(timeout()),this,SLOT(publishStatistics()));
+	timer->start(1000);
+}
+void Core::publishStatistics()
+{
+	QJsonObject statsobject;
+	QJsonArray subscriberMsgList;
+	for (QMap<QString,DataProvider*>::const_iterator i = m_dataMap.constBegin();i!=m_dataMap.constEnd();i++)
+	{
+		QJsonObject subscriberMsg;
+		subscriberMsg.insert("name",i.key());
+		subscriberMsg.insert("count",QJsonValue::fromVariant(i.value()->messageCount));
+		QJsonArray subscriberList;
+		for (int j=0;j<i.value()->subscriberList.size();j++)
+		{
+			subscriberList.append(i.value()->subscriberList.at(j)->name());
+		}
+		subscriberMsg.insert("subscribers",subscriberList);
+		subscriberMsgList.append(subscriberMsg);
+	}
+	QByteArray payload = QJsonDocument(subscriberMsgList).toJson();
+	QString name = "core/status";
+	if (m_dataMap.contains(name))
+	{
+		m_dataMap[name]->messageCount++;
+		for (int i=0;i<m_dataMap[name]->subscriberList.size();i++)
+		{
+			m_dataMap[name]->subscriberList.at(i)->publishMessage(name,payload);
+//			m_dataMap[message]->subscriberList.at(i)->write()
+		}
+	}
 }
 
 void Core::jsonPacketReceived(QString sender,QJsonObject message)
@@ -89,6 +124,7 @@ void Core::publishMessage(QString name,QByteArray payload)
 	qDebug() << "Incoming publish message:" << name<< payload;
 	if (m_dataMap.contains(name))
 	{
+		m_dataMap[name]->messageCount++;
 		for (int i=0;i<m_dataMap[name]->subscriberList.size();i++)
 		{
 			m_dataMap[name]->subscriberList.at(i)->publishMessage(name,payload);

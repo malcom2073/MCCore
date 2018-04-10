@@ -12,6 +12,7 @@ class DataProvider
 public:
 	QString origionator;
 	QList<MCIPC*> subscriberList;
+	quint32 messageCount;
 };
 class Core : public QObject
 {
@@ -30,6 +31,7 @@ private slots:
 	void subscribeMessage(QString message);
 	void publishMessage(QString name,QByteArray payload);
 	void serverNewConnection();
+	void publishStatistics();
 signals:
 
 public slots:
