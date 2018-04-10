@@ -131,6 +131,12 @@ void Core::publishMessage(QString name,QByteArray payload)
 //			m_dataMap[message]->subscriberList.at(i)->write()
 		}
 	}
+	else
+	{
+		//No subscribers yet, add it to the list so subscribers can subscribe to it
+		m_dataMap.insert(name,new DataProvider());
+		m_dataMap[name]->messageCount = 1;
+	}
 }
 void Core::serverNewConnection()
 {
