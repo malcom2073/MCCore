@@ -26,6 +26,7 @@ private:
 	QList<MCIPC*> m_unAuthedConnections;
 	QList<MCIPC*> m_authedConnections;
 private slots:
+	void socketDisconnected();
 	void ipcJsonPacket(QJsonObject object);
 	void jsonPacketReceived(QString sender,QJsonObject message);
 	void subscribeMessage(QString message);

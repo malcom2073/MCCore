@@ -45,7 +45,35 @@ void Core::publishStatistics()
 		for (int i=0;i<m_dataMap[name]->subscriberList.size();i++)
 		{
 			m_dataMap[name]->subscriberList.at(i)->publishMessage(name,payload);
-//			m_dataMap[message]->subscriberList.at(i)->write()
+		}
+	}
+}
+void Core::socketDisconnected()
+{
+	//We got a signal that an IPC socket has disconnected, handle it.
+	MCIPC *ipcsender = qobject_cast<MCIPC*>(sender());
+	if (!ipcsender)
+	{
+		return;
+	}
+	if (m_unAuthedConnections.contains(ipcsender))
+	{
+		//It was an un-authed connected, we don't care.
+		m_unAuthedConnections.removeOne(ipcsender);
+		qDebug() << "Unauthorized connection disconnected!";
+		ipcsender->deleteLater();
+	}
+	if (m_authedConnections.contains(ipcsender))
+	{
+		qDebug() << "Authorized connection disconneted!";
+		ipcsender->deleteLater();
+	}
+	//Clear ipcsender from any subscriber lists
+	for (QMap<QString,DataProvider*>::const_iterator i = m_dataMap.constBegin();i!=m_dataMap.constEnd();i++)
+	{
+		if (i.value()->subscriberList.contains(ipcsender))
+		{
+			i.value()->subscriberList.removeOne(ipcsender);
 		}
 	}
 }
@@ -128,7 +156,6 @@ void Core::publishMessage(QString name,QByteArray payload)
 		for (int i=0;i<m_dataMap[name]->subscriberList.size();i++)
 		{
 			m_dataMap[name]->subscriberList.at(i)->publishMessage(name,payload);
-//			m_dataMap[message]->subscriberList.at(i)->write()
 		}
 	}
 	else
@@ -147,6 +174,7 @@ void Core::serverNewConnection()
 	connect(newipc,SIGNAL(si_publishMessage(QString,QByteArray)),this,SLOT(publishMessage(QString,QByteArray)));
 	connect(newipc,SIGNAL(si_subscribeMessage(QString)),this,SLOT(subscribeMessage(QString)));
 	connect(newipc,SIGNAL(si_jsonPacketReceived(QJsonObject)),this,SLOT(ipcJsonPacket(QJsonObject)));
+	connect(newipc,SIGNAL(si_disconnected()),this,SLOT(socketDisconnected()));
 
 }
 void Core::ipcJsonPacket(QJsonObject object)
