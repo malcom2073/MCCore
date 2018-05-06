@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QDateTime>
 
 Core::Core(QObject *parent) : QObject(parent)
 {
@@ -37,7 +38,8 @@ void Core::publishStatistics()
 		subscriberMsg.insert("subscribers",subscriberList);
 		subscriberMsgList.append(subscriberMsg);
 	}
-	QByteArray payload = QJsonDocument(subscriberMsgList).toJson();
+	statsobject.insert("subscribers",subscriberMsgList);
+	QByteArray payload = QJsonDocument(statsobject).toJson();
 	QString name = "core/status";
 	if (m_dataMap.contains(name))
 	{
@@ -150,6 +152,18 @@ void Core::publishMessage(QString name,QByteArray payload)
 		return;
 	}
 	qDebug() << "Incoming publish message:" << name<< payload;
+
+	qint64 msecs = QDateTime::currentMSecsSinceEpoch();
+	QByteArray unixtimebytes;
+	//Timestamp
+	unixtimebytes.append((unsigned char)(msecs >> 8) & 0xFF);
+	unixtimebytes.append((char)0x00);
+	unixtimebytes.append((char)0x00);
+	unixtimebytes.append((char)0x00);
+	unixtimebytes.append((char)0x00);
+	unixtimebytes.append((char)0x00);
+	unixtimebytes.append((char)0x00);
+	unixtimebytes.append((char)0x00);
 	if (m_dataMap.contains(name))
 	{
 		m_dataMap[name]->messageCount++;
